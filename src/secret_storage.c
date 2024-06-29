@@ -42,6 +42,57 @@ tatic ssize_t write_secret(struct file *file, const char __user *buffer, size_t 
     return count;
 }
 
+static ssize_t read_secret(struct file *file, char __user *buffer, size_t count, loff_t *ppos) {
+    struct secret *secret;
+    char *output;
+    size_t len = 0;
+    ssize_t ret;
+
+    list_for_each_entry(secret, &secret_list, list) {
+        len += snprintf(NULL, 0, "ID: %d, Secret: %s\n", secret->id, secret->data);
+    }
+
+    if (*ppos >= len)
+        return 0;
+
+    output = kmalloc(len + 1, GFP_KERNEL);
+    if (!output)
+        return -ENOMEM;
+
+    len = 0;
+    list_for_each_entry(secret, &secret_list, list) {
+        len += sprintf(output + len, "ID: %d, Secret: %s\n", secret->id, secret->data);
+    }
+
+    if (copy_to_user(buffer, output, len)) {
+        kfree(output);
+        return -EFAULT;
+    }
+
+    *ppos += len;
+    kfree(output);
+    return len;
+}
+
+static ssize_t delete_secret(struct file *file, const char __user *buffer, size_t count, loff_t *ppos) {
+    int id;
+    struct secret *secret, *tmp;
+
+    if (kstrtoint_from_user(buffer, count, 10, &id))
+        return -EFAULT;
+
+    list_for_each_entry_safe(secret, tmp, &secret_list, list) {
+        if (secret->id == id) {
+            list_del(&secret->list);
+            kfree(secret->data);
+            kfree(secret);
+            return count;
+        }
+    }
+    return -ENOENT;
+}
+
+
 static int __init secret_init(void) {
     printk(KERN_INFO "Secret storage module loaded\n");
     return 0;
