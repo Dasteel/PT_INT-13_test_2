@@ -1,14 +1,15 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/slab.h>
+#include <linux/proc_fs.h>
 #include <linux/uaccess.h>
-
+#include <linux/slab.h>
+#include <linux/list.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Dasteel");
 MODULE_DESCRIPTION("A simple Linux kernel module for storing secrets in procfs");
-MODULE_VERSION("v0.1.0-alpha");
+MODULE_VERSION("0.1.0-alpha1");
 
 struct secret {
     int id;
@@ -19,7 +20,7 @@ struct secret {
 static LIST_HEAD(secret_list);
 static int next_id = 1;
 
-tatic ssize_t write_secret(struct file *file, const char __user *buffer, size_t count, loff_t *ppos) {
+static ssize_t write_secret(struct file *file, const char __user *buffer, size_t count, loff_t *ppos) {
     struct secret *new_secret;
     new_secret = kmalloc(sizeof(*new_secret), GFP_KERNEL);
     if (!new_secret)
@@ -92,13 +93,30 @@ static ssize_t delete_secret(struct file *file, const char __user *buffer, size_
     return -ENOENT;
 }
 
+static struct proc_ops fops_write_read = {
+    .proc_write = write_secret,
+    .proc_read = read_secret,
+};
+
+static struct proc_ops fops_delete = {
+    .proc_write = delete_secret,
+};
 
 static int __init secret_init(void) {
+    proc_create("secret_storage", 0666, NULL, &fops_write_read);
+    proc_create("secret_storage_delete", 0666, NULL, &fops_delete);
     printk(KERN_INFO "Secret storage module loaded\n");
     return 0;
 }
 
 static void __exit secret_exit(void) {
+    struct secret *secret, *tmp;
+    remove_proc_entry("secret_storage", NULL);
+    remove_proc_entry("secret_storage_delete", NULL);
+    list_for_each_entry_safe(secret, tmp, &secret_list, list) {
+        kfree(secret->data);
+        kfree(secret);
+    }
     printk(KERN_INFO "Secret storage module unloaded\n");
 }
 
