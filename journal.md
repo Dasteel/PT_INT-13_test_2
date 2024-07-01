@@ -16,4 +16,7 @@
 - Added documentation in README.md.
 - Committed the Makefile and documentation.
 
-
+## Day 3
+- Tested the module and userspace program.
+- Prepared for KASAN testing.
+- Committed final changes.
