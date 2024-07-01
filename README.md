@@ -25,6 +25,6 @@ sudo rmmod secret_storage
 
 ## Userspace Test Program
 ```sh
-gcc -o test_program test_program.c
+gcc -o test_program src/test_program.c
 ./test_program
 ```
