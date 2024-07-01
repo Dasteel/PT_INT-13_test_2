@@ -47,7 +47,6 @@ static ssize_t read_secret(struct file *file, char __user *buffer, size_t count,
     struct secret *secret;
     char *output;
     size_t len = 0;
-    ssize_t ret;
 
     list_for_each_entry(secret, &secret_list, list) {
         len += snprintf(NULL, 0, "ID: %d, Secret: %s\n", secret->id, secret->data);
